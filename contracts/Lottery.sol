@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-//random Number oracle
-import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
-
-//debugging
+// IMPORTS ------------------------------------------------------------------------------------
+/// @notice debugging tool
 import "hardhat/console.sol";
-
-// restricted access
+/// @notice random Number oracle
+/// @dev using v1 VRF
+import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+/// @notice restricted access
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-// prevent reentrancy attacks
+/// @notice security
+/// @dev security against transactions with multiple requests
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-/* When deploying to local network you need to change the algorithm for drawing a random winner, from 
-oracle version to non-oracle version(the code is already written you just need to uncomment). Instead of using the local version, you could try to fork the mainnet or kovan via hardhat in your local net.
-The oracle version is interacting with chainlink nodes which are not accessible on your local network.
-*/
+// ERROR MESSAGES ------------------------------------------------------------------
 
+// CONTRACTS ------------------------------------------------------------------------------------
+/// @title Lottery
+/// @author Stefan Lehmann/Stefan1612/SimpleBlock
+/// @notice Contract utilizing Chainlink's VRF to generate a truly random result for a lottery
+/// @dev testing in local environment would be either done via: 1. changing this contract to create random numbers without VRF for testing purposes. 2. using the provided Mock. 3. Forking Mainnet.
 contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
-    //
-
+   
     // @Dev constructor  @arg:
     //kovan:
     //vrf: 0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9,
@@ -28,58 +29,45 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
     //keyHash: 0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4,
     //Fee: 1000000000000000000
 
-    // total amount of wei in the current running lottery pool
-    uint256 public totalCurrentPool;
+    // Type declarations, State Variables --------------------------------------------------------------------------
+    /// @notice total amount of wei in the current running lottery pool
+    uint256 public s_totalCurrentPool;
 
-    // changing the runtime of the lottery, default 10 seconds for testing purposes
+    /// @notice time the lottery will be running for
     uint256 public time = 10 seconds;
 
-    //external
-    function settingTimeInSeconds(uint256 newTime) external onlyOwner {
-        require(
-            winnerChosen == true,
-            "You can only change the time after the winner has been chosen!"
-        );
-        time = newTime;
-        emit timeChange(time);
-    }
+    /// @dev coming from Chainlink's VRF
+    bytes32 internal keyHash;
+    uint256 internal fee;
+    /// @notice the random result used to declare winners
+    uint256 public randomResult;
 
-    // keeping track of the past winnings of individuals to withdraw
-
-    //private
+    /// @notice keeping track of the past winnings of individuals to withdraw
     mapping(address => uint256) public winners;
 
-    //Initialized as timestamp when the contract got deployed but will also be refreshed everytime
-    //a new lottery has started to the current block.timestamp
+    /// @notice The block.timestamp starting time of the current lottery
     uint256 public startTime;
 
+    /// @notice the unix time when the lottery has the OPTION to end (lottery needs to have atleast 2 participants and the timer to be over to stop)
     uint256 public endTime;
 
-    // lottery entry price
+    /// @notice lottery entry price
     uint256 public price = 0.002 ether;
 
-    //external
-    //changing entry price
-    function entryPriceInWei(uint256 newPrice) external onlyOwner {
-        require(
-            winnerChosen == true,
-            "You can only change the entry price after the winner has been chosen!"
-        );
-        price = newPrice;
-        emit priceChange(price);
-    }
-
-    // winner of the last lottery
+    /// @notice winner of the last lottery
     address payable public winner;
 
-    //private
-    //to make sure that only ONE lottery gets run at a time
+    /// @notice to make sure that only ONE lottery gets run at a time 
+    /// @dev alternative would be enum
     bool private winnerChosen = false;
 
-    // everyone in the currently running lottery
+    /// @notice everyone in the currently running lottery
     address payable[] public participants;
 
-    // @Dev vrf, link for random num offchain
+    uint256 private lotteryProfits;
+
+    /// @param vrfCoordinator, link, _keyhash, _fee are all predetermined by chainlink: https://docs.chain.link/docs/get-a-random-number/v1/
+    /// @dev VRF1, reentrancy, and ownable
     constructor(
         address vrfCoordinator,
         address link,
@@ -91,28 +79,32 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         startTime = block.timestamp;
         endTime = block.timestamp + time;
     }
-    // entry price change
+    // EVENTS ------------------------------------------------------------------------------------
+    /// @notice triggers after lottery entry price changes
     event priceChange(
         uint indexed newPrice
     );
-    // lottery time interval change
+
+    /// @notice lottery time interval change
     event timeChange(
         uint indexed newTime
     );
-    // emitting lottery ended, winner, and his price
+
+    /// @notice emitting lottery ended, winner, and his price
     event winnerHasBeenChosen(
         address indexed _winner,
         uint256 indexed totalWinning,
         uint256 indexed time
     );
 
-    // @Dev new Lottery started
+    /// @notice new Lottery started
     event newLotteryStarted(uint256 indexed time);
 
-    // @Dev someone entered the lottery (multiple entry of same address allowed)
+    /// @notice someone entered the lottery (multiple entry of same address allowed)
     event newParticipant(address indexed newEntry, uint256 indexed time);
 
-    //restricting time to join and a minimun of participants, else you cannot draw a winner
+
+    /// @notice restricting time to join and a minimun of participants, else you cannot draw a winner
     modifier onlyWhile(uint256 _time) {
         require(
             _time >= block.timestamp || participants.length < 2,
@@ -121,25 +113,50 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         _;
     }
 
-    //@Dev making sure the EXACT entry price is transfered
+    /// @notice making sure the EXACT entry price is transfered
     modifier entryPrice() {
         require(msg.value == price, "You need to pay the exact price");
         _;
     }
 
-    //@Dev Checking if lottery time has ran out
+    /// @notice checking if lottery time has ran out
     modifier onlyAfter(uint256 _time) {
         require(_time <= block.timestamp, "The lottery has not ended yet");
         _;
     }
 
-    //do i even need this?
+    /// @notice used as help for the front-end
     function getArrayLength() external view returns (uint256 length) {
         length = participants.length;
     }
 
-    //external
-    // @dev function to enter the current lottery
+
+    /// @notice
+    /// @param newTime the new time amount you want the lottery to be running for
+    function settingTimeInSeconds(uint256 newTime) external onlyOwner {
+        require(
+            winnerChosen == true,
+            "You can only change the time after the winner has been chosen!"
+        );
+        time = newTime;
+        emit timeChange(time);
+    }
+
+   
+    
+    /// @notice changing entry price
+    function entryPriceInWei(uint256 newPrice) external onlyOwner {
+        require(
+            winnerChosen == true,
+            "You can only change the entry price after the winner has been chosen!"
+        );
+        price = newPrice;
+        emit priceChange(price);
+    }
+
+
+
+    /// @notice function to enter the current lottery
     function enterPool()
         external
         payable
@@ -150,14 +167,12 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
 
         //multiple entry allowed
         participants.push(payable(msg.sender));
-        totalCurrentPool += price;
+        s_totalCurrentPool += price;
         emit newParticipant(msg.sender, block.timestamp);
     }
 
-    bytes32 internal keyHash;
-    uint256 internal fee;
-    uint256 public randomResult;
-
+    /// @notice start of generating random number
+    /// @dev activating the VRF call
     function getRandomNumber() private returns (bytes32 requestId) {
         require(
             LINK.balanceOf(address(this)) >= fee,
@@ -166,6 +181,7 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         return requestRandomness(keyHash, fee);
     }
 
+    /// @notice receiving random num
     function fulfillRandomness(bytes32 requestId, uint256 randomness)
         internal
         override
@@ -174,8 +190,8 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         secondPartChoose(randomResult);
     }
 
-    //external
-    // @dev choosing the winner of the current lottery
+    
+    /// @notice choosing the winner of the current lottery
     function chooseWinner() external onlyOwner onlyAfter(startTime + time) {
         require(
             participants.length >= 2,
@@ -202,20 +218,20 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         winner = payable(participants[winnerIndex]);
 
         // 10% profit cut for contract
-        winners[winner] += (totalCurrentPool * 9) / 10;
-        lotteryProfits += (totalCurrentPool * 1) / 10;
+        winners[winner] += (s_totalCurrentPool * 9) / 10;
+        lotteryProfits += (s_totalCurrentPool * 1) / 10;
 
         // clearing the participant list
         delete participants;
 
         // emit that winner has been chosen and he can retrieve his winnings
-        emit winnerHasBeenChosen(winner, totalCurrentPool, block.timestamp);
-        totalCurrentPool = 0;
+        emit winnerHasBeenChosen(winner, s_totalCurrentPool, block.timestamp);
+        s_totalCurrentPool = 0;
         winnerChosen = true;*/
     }
 
-    //also cut this for non-oracle:
-    //@Dev second part of choosing a random Winner
+    // also cut this for non-oracle:
+    /// @notice second part of choosing a random Winner
     function secondPartChoose(uint256 _randomResult) private {
         //oracle solution
 
@@ -223,22 +239,21 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         winner = payable(participants[_randomResult]);
 
         // 10% profit cut for contract
-        winners[winner] += (totalCurrentPool * 9) / 10;
-        lotteryProfits += (totalCurrentPool * 1) / 10;
+        winners[winner] += (s_totalCurrentPool * 9) / 10;
+        lotteryProfits += (s_totalCurrentPool * 1) / 10;
 
         // clearing the participant list
         delete participants;
 
         // emit that winner has been chosen and he can retrieve his winnings
-        emit winnerHasBeenChosen(winner, totalCurrentPool, block.timestamp);
-        totalCurrentPool = 0;
+        emit winnerHasBeenChosen(winner, s_totalCurrentPool, block.timestamp);
+        s_totalCurrentPool = 0;
         winnerChosen = true;
     }
 
     //cut end
 
-    //external
-    //@Dev Starting a new Lottery
+    /// @notice Starting a new Lottery
     function startNewLottery() external onlyOwner {
         require(
             winnerChosen == true,
@@ -252,9 +267,9 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         emit newLotteryStarted(block.timestamp);
     }
 
-    //external
-    // @dev function to withdraw your price money
-    // @param _receiver address of the price money
+ 
+    /// @notice function to withdraw your price money
+    /// @param _receiver receiver address of the price money
     function withdrawPrice(address payable _receiver) external nonReentrant {
         require(winners[msg.sender] > 0, "You have not won a lottery yet");
         //winners[msg.sender] =0;
@@ -263,10 +278,10 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         winners[msg.sender] = 0;
     }
 
-    //private
-    uint256 private lotteryProfits;
 
-    //external
+    
+
+
     function getBalance() external view returns (uint256 contractBalance) {
         contractBalance = address(this).balance;
     }

@@ -17,7 +17,7 @@ describe("Lottery basics", () => {
 
   it("should show TotalCurrentPool", async () => {
     // currentPool of ether inside the contract should be 0
-    expect(await lt.totalCurrentPool()).to.equal("0");
+    expect(await lt.s_totalCurrentPool()).to.equal("0");
   });
   it("should show current Time interval", async () => {
     // the initial time interval the lottery is running for should equal 10 seconds
