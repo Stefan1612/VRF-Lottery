@@ -66,19 +66,6 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
 
     uint256 private lotteryProfits;
 
-    /// @param vrfCoordinator, link, _keyhash, _fee are all predetermined by chainlink: https://docs.chain.link/docs/get-a-random-number/v1/
-    /// @dev VRF1, reentrancy, and ownable
-    constructor(
-        address vrfCoordinator,
-        address link,
-        bytes32 _keyHash,
-        uint256 _fee
-    ) VRFConsumerBase(vrfCoordinator, link) Ownable() ReentrancyGuard() {
-        keyHash = _keyHash;
-        fee = _fee;
-        startTime = block.timestamp;
-        endTime = block.timestamp + time;
-    }
     // EVENTS ------------------------------------------------------------------------------------
     /// @notice triggers after lottery entry price changes
     event priceChange(
@@ -103,7 +90,7 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
     /// @notice someone entered the lottery (multiple entry of same address allowed)
     event newParticipant(address indexed newEntry, uint256 indexed time);
 
-
+    // MODIFIERS ------------------------------------------------------------------------------------
     /// @notice restricting time to join and a minimun of participants, else you cannot draw a winner
     modifier onlyWhile(uint256 _time) {
         require(
@@ -125,11 +112,30 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         _;
     }
 
+    // FUNCTIONS ------------------------------------------------------------------------------------
+    /// @param vrfCoordinator, link, _keyhash, _fee are all predetermined by chainlink: https://docs.chain.link/docs/get-a-random-number/v1/
+    /// @dev VRF1, reentrancy, and ownable
+    constructor(
+        address vrfCoordinator,
+        address link,
+        bytes32 _keyHash,
+        uint256 _fee
+    ) VRFConsumerBase(vrfCoordinator, link) Ownable() ReentrancyGuard() {
+        keyHash = _keyHash;
+        fee = _fee;
+        startTime = block.timestamp;
+        endTime = block.timestamp + time;
+    }
+
+    /// @dev if somebody accidentally sends ether directly to the contract
+    fallback() payable external {
+        enterPool();
+    }
+
     /// @notice used as help for the front-end
     function getArrayLength() external view returns (uint256 length) {
         length = participants.length;
     }
-
 
     /// @notice
     /// @param newTime the new time amount you want the lottery to be running for
@@ -142,8 +148,6 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         emit timeChange(time);
     }
 
-   
-    
     /// @notice changing entry price
     function entryPriceInWei(uint256 newPrice) external onlyOwner {
         require(
@@ -154,11 +158,9 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         emit priceChange(price);
     }
 
-
-
     /// @notice function to enter the current lottery
     function enterPool()
-        external
+        public
         payable
         entryPrice
         onlyWhile(startTime + time)
@@ -190,7 +192,6 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         secondPartChoose(randomResult);
     }
 
-    
     /// @notice choosing the winner of the current lottery
     function chooseWinner() external onlyOwner onlyAfter(startTime + time) {
         require(
@@ -267,7 +268,6 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         emit newLotteryStarted(block.timestamp);
     }
 
- 
     /// @notice function to withdraw your price money
     /// @param _receiver receiver address of the price money
     function withdrawPrice(address payable _receiver) external nonReentrant {
@@ -278,15 +278,12 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         winners[msg.sender] = 0;
     }
 
-
-    
-
-
+    /// @notice getting info about the current balance the contract holds
     function getBalance() external view returns (uint256 contractBalance) {
         contractBalance = address(this).balance;
     }
 
-    //external
+    /// @notice owner of the lottery contract can withdraw his "cut"
     function lotteryProfitsWithdraw() external onlyOwner nonReentrant {
         require(lotteryProfits > 0, "No profits to take");
         //lotteryProfits = 0;
