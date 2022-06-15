@@ -14,6 +14,16 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // ERROR MESSAGES ------------------------------------------------------------------
+error Lottery__LotteryCannotBeEnteredAtThisPointOfTime(uint timestamp, uint arrayLength);
+error Lottery__DidNotPayExactEntryPrice(address sender, uint valueSend);
+error Lottery__LotteryAlreadyEnded(address caller );
+error Lottery__LotteryHasNoWinnerYet(address caller);
+error Lottery__CurrentlyNoLotteryRunning(address requester);
+error Lottery__NotEnoughLotteryParticipants(uint participantsLength);
+error Lottery__WinnerAlreadyChosen(bool winnerChosen);
+error Lottery__FailedSendingEther( address caller, uint valueSend);
+error Lottery__CallerDidNotWinALottery(address caller);
+error Lottery__CallerHasNoProfits(address caller);
 
 // CONTRACTS ------------------------------------------------------------------------------------
 /// @title Lottery
