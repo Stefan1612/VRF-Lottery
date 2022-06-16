@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // ERROR MESSAGES ------------------------------------------------------------------
-error Lottery__LotteryCannotBeEnteredAtThisPointOfTime(uint timestamp, uint arrayLength);
+error Lottery__LotteryCannotBeEnteredAtThisPointOfTime(uint timestamp);
 error Lottery__DidNotPayExactEntryPrice(address sender, uint valueSend);
 error Lottery__LotteryAlreadyEnded(address caller );
 error Lottery__LotteryHasNoWinnerYet(address caller);
@@ -150,33 +150,49 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
     /// @notice
     /// @param newTime the new time amount you want the lottery to be running for
     function settingTimeInSeconds(uint256 newTime) external onlyOwner {
-        require(
+        /* require(
             winnerChosen == true,
             "You can only change the time after the winner has been chosen!"
-        );
+        ); */
+        if(!winnerChosen == true){
+            revert Lottery__LotteryHasNoWinnerYet(msg.sender);
+        }
         time = newTime;
         emit timeChange(time);
     }
 
     /// @notice changing entry price
+    /// @param newPrice new entry price of the lottery
+    /// @dev possible modfier "onlyOwner" (some form of restricted access should be provided, alternative could be a dao handling the entry price)
     function entryPriceInWei(uint256 newPrice) external onlyOwner {
-        require(
+        /* require(
             winnerChosen == true,
             "You can only change the entry price after the winner has been chosen!"
-        );
+        ); */
+        if(!winnerChosen == true){
+            revert Lottery__LotteryHasNoWinnerYet(msg.sender);
+        }
         price = newPrice;
         emit priceChange(price);
     }
 
     /// @notice function to enter the current lottery
+    /// @dev potential modifiers if custom error messages stopped being more gas efficient: entryPrice, onlyWhile(startTime + time)
     function enterPool()
         public
         payable
-        entryPrice
-        onlyWhile(startTime + time)
+        
     {
-        require(winnerChosen == false, "A new lottery has to be started");
-
+        /* require(winnerChosen == false, "A new lottery has to be started"); */
+        if(!winnerChosen == false){
+            revert Lottery__LotteryHasNoWinnerYet(msg.sender);
+        }
+        if(msg.value != price){
+            revert Lottery__DidNotPayExactEntryPrice(msg.sender, msg.value);
+        }
+        if(startTime + time < block.timestamp && participants.length >= 2){
+            revert Lottery__LotteryCannotBeEnteredAtThisPointOfTime(block.timestamp);
+        }
         //multiple entry allowed
         participants.push(payable(msg.sender));
         s_totalCurrentPool += price;
