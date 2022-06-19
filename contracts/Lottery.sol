@@ -282,10 +282,13 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
 
     /// @notice Starting a new Lottery
     function startNewLottery() external onlyOwner {
-        require(
+        /* require(
             winnerChosen == true,
             "You need to choose the winner for the current Lottery, before you can start a new one"
-        );
+        ); */
+        if(!winnerChosen == true){
+            revert Lottery__LotteryHasNoWinnerYet(msg.sender);
+        }
         // resetting the timestamp will automatically start a new lottery
         startTime = block.timestamp;
         endTime = block.timestamp + time;
@@ -297,10 +300,16 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
     /// @notice function to withdraw your price money
     /// @param _receiver receiver address of the price money
     function withdrawPrice(address payable _receiver) external nonReentrant {
-        require(winners[msg.sender] > 0, "You have not won a lottery yet");
-        //winners[msg.sender] =0;
+        /* require(winners[msg.sender] > 0, "You have not won a lottery yet"); */
+        if(winners[msg.sender] <= 0){
+            revert Lottery__CallerDidNotWinALottery(msg.sender);
+        }
+        
         (bool sent, ) = _receiver.call{value: winners[msg.sender]}("");
-        require(sent, "Failed to send Ether");
+        if(!sent){
+            revert Lottery__FailedSendingEther(msg.sender, winners[msg.sender]);
+        }
+        /* require(sent, "Failed to send Ether"); */
         winners[msg.sender] = 0;
     }
 
@@ -311,10 +320,17 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
 
     /// @notice owner of the lottery contract can withdraw his "cut"
     function lotteryProfitsWithdraw() external onlyOwner nonReentrant {
-        require(lotteryProfits > 0, "No profits to take");
-        //lotteryProfits = 0;
+        /* require(lotteryProfits > 0, "No profits to take"); */
+        
+        if(lotteryProfits<= 0){
+            revert Lottery__CallerHasNoProfits(msg.sender);
+        }
+     
         (bool sent, ) = msg.sender.call{value: lotteryProfits}("");
-        require(sent, "Failed to send Ether");
+        if(!sent){
+            revert Lottery__FailedSendingEther(msg.sender, lotteryProfits);
+        }
+        /* require(sent, "Failed to send Ether"); */
         lotteryProfits = 0;
     }
 }
