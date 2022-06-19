@@ -24,6 +24,7 @@ error Lottery__WinnerAlreadyChosen(bool winnerChosen);
 error Lottery__FailedSendingEther( address caller, uint valueSend);
 error Lottery__CallerDidNotWinALottery(address caller);
 error Lottery__CallerHasNoProfits(address caller);
+error Lottery__LotteryHasNotEndedYet(address caller);
 
 // CONTRACTS ------------------------------------------------------------------------------------
 /// @title Lottery
@@ -219,12 +220,25 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
     }
 
     /// @notice choosing the winner of the current lottery
-    function chooseWinner() external onlyOwner onlyAfter(startTime + time) {
-        require(
+     /// @dev potential modifiers if custom error messages stopped being more gas efficient: onlyAfter(startTime + time)
+    function chooseWinner() external onlyOwner {
+        // replacement for "onlyAfter(startTime + time) modifier
+        if(startTime + time > block.timestamp){
+            revert Lottery__LotteryHasNotEndedYet(msg.sender);
+        }
+        
+        /* require(
             participants.length >= 2,
             "There are not enough participants yet"
-        );
-        require(winnerChosen == false, "The time has not run out yet");
+        ); */
+        if(participants.length < 2){
+            revert Lottery__LotteryHasNotEndedYet(msg.sender);
+        }
+
+        /* require(winnerChosen == false, "The time has not run out yet"); */
+        if(winnerChosen == true){
+            revert Lottery__WinnerAlreadyChosen(winnerChosen);
+        }
 
         //Cut this:
         getRandomNumber();
@@ -319,10 +333,11 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
     }
 
     /// @notice owner of the lottery contract can withdraw his "cut"
+    
     function lotteryProfitsWithdraw() external onlyOwner nonReentrant {
         /* require(lotteryProfits > 0, "No profits to take"); */
         
-        if(lotteryProfits<= 0){
+        if(lotteryProfits <= 0){
             revert Lottery__CallerHasNoProfits(msg.sender);
         }
      
