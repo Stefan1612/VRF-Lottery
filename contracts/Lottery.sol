@@ -102,8 +102,9 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
     event newParticipant(address indexed newEntry, uint256 indexed time);
 
     // MODIFIERS ------------------------------------------------------------------------------------
+     /*  // In Case modifiers and requires get more gas efficient in the future
     /// @notice restricting time to join and a minimun of participants, else you cannot draw a winner
-    modifier onlyWhile(uint256 _time) {
+   /*  modifier onlyWhile(uint256 _time) {
         require(
             _time >= block.timestamp || participants.length < 2,
             "You cannot enter this pool anymore"
@@ -121,7 +122,7 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
     modifier onlyAfter(uint256 _time) {
         require(_time <= block.timestamp, "The lottery has not ended yet");
         _;
-    }
+    } */
 
     // FUNCTIONS ------------------------------------------------------------------------------------
     /// @param vrfCoordinator, link, _keyhash, _fee are all predetermined by chainlink: https://docs.chain.link/docs/get-a-random-number/v1/
@@ -186,7 +187,7 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
     {
         /* require(winnerChosen == false, "A new lottery has to be started"); */
         if(!winnerChosen == false){
-            revert Lottery__LotteryHasNoWinnerYet(msg.sender);
+            revert Lottery__CurrentlyNoLotteryRunning(msg.sender);
         }
         if(msg.value != price){
             revert Lottery__DidNotPayExactEntryPrice(msg.sender, msg.value);
@@ -223,7 +224,7 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
      /// @dev potential modifiers if custom error messages stopped being more gas efficient: onlyAfter(startTime + time)
     function chooseWinner() external onlyOwner {
         // replacement for "onlyAfter(startTime + time) modifier
-        if(startTime + time > block.timestamp){
+        if(startTime + time < block.timestamp){
             revert Lottery__LotteryHasNotEndedYet(msg.sender);
         }
         
@@ -248,7 +249,7 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         // @Dev Uncomment and cut the getRandomNumber(), line 141 right above this
 
         //uncomment for non-oracle testing purposes
-        /*uint256 range = participants.length;
+      /*   uint256 range = participants.length;
 
         uint256 winnerIndex = uint256(
             keccak256(
@@ -268,7 +269,7 @@ contract Lottery is Ownable, ReentrancyGuard, VRFConsumerBase {
         // emit that winner has been chosen and he can retrieve his winnings
         emit winnerHasBeenChosen(winner, s_totalCurrentPool, block.timestamp);
         s_totalCurrentPool = 0;
-        winnerChosen = true;*/
+        winnerChosen = true; */
     }
 
     // also cut this for non-oracle:
