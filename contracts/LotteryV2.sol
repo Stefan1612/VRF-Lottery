@@ -101,21 +101,14 @@ contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
     uint32 numWords = 1;
 
 
+    enum lotteryState {
+        lookingForPariticipants,
+        endedNoWinnerChosen,
+        currentlyChoosingWinner,
+        WinnerChosenWaitingToBeStarted
+    }
 
-
-
-
-    // --------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
+    lotteryState public currentState = lotteryState.lookingForPariticipants;
 
 
 
@@ -199,6 +192,7 @@ contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
     /**
      * FOR GOERLI
      * COORDINATOR: 0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D
+     keyhash: 0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15
      */
     constructor(
         uint64 subscriptionId,
@@ -288,7 +282,7 @@ contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
 
     /// @notice start of generating random number
     /// @dev activating the VRF call
-    function getRandomNumber() private returns (uint256 requestId) {
+    function requestRandomWords() private returns (uint256 requestId) {
        
         requestId = COORDINATOR.requestRandomWords(
             keyHash,
@@ -297,12 +291,7 @@ contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
             callbackGasLimit,
             numWords
         );
-        s_requests[requestId] = RequestStatus({
-            randomWords: new uint256[](0),
-            exists: true,
-            fulfilled: false
-        });
-        requestIds.push(requestId);
+     
         lastRequestId = requestId;
    
         emit RequestSent(requestId, numWords);
@@ -316,23 +305,20 @@ contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
         internal
         override
     {   
-        require(s_requests[_requestId].exists, "request not found");
+
   
-        s_requests[_requestId].fulfilled = true;
-        s_requests[_requestId].randomWords = _randomWords;
         emit RequestFulfilled(_requestId, _randomWords);
 
-
         randomResult = (_randomWords[0] % participants.length);
-      
-       secondPartChoose(randomResult);
+
+        secondPartChoose(randomResult);
     }
 
     /// @notice choosing the winner of the current lottery
      /// @dev potential modifiers if custom error messages stopped being more gas efficient: onlyAfter(startTime + time)
     function chooseWinner() external  {
         // replacement for "onlyAfter(startTime + time) modifier
-     
+        currentState = lotteryState.currentlyChoosingWinner;
         /* if(startTime + time < block.timestamp){
             revert Lottery__LotteryHasNotEndedYet(msg.sender);
         } */
@@ -351,7 +337,7 @@ contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
         } */
      
         //Cut this:
-        getRandomNumber();
+        requestRandomWords();
         //cut end
 
         //Non oracle solution
@@ -395,12 +381,12 @@ contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
 
         // clearing the participant list
         delete participants;
-
+        winnerChosen = true;
+         currentState = lotteryState.WinnerChosenWaitingToBeStarted;
         // emit that winner has been chosen and he can retrieve his winnings
         emit winnerHasBeenChosen(winner, s_totalCurrentPool, block.timestamp);
         s_totalCurrentPool = 0;
-        winnerChosen = true;
-      
+        
     }
 
     //cut end
@@ -419,6 +405,7 @@ contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
         endTime = block.timestamp + time;
         winnerChosen = false;
         winner = payable(address(0));
+        currentState = lotteryState.WinnerChosenWaitingToBeStarted;
         emit newLotteryStarted(block.timestamp);
     }
 
