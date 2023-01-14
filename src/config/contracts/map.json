@@ -1,4 +1,8 @@
 {
+  "5": {
+    "contracts/LotteryV2.sol:Lottery": "0x3507f9Da2cBc3E2B10a20fc10c7c65d7B5f14048",
+    "LotteryV2": "0xb312fccc365d15c7531633D5B7Ddb5867f68A97E"
+  },
   "42": {
     "Lottery": "0x64283E7e871735853712a29310E6b00aa3160731"
   },

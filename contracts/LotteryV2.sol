@@ -17,11 +17,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
 
-
-
-
-
-
 // ERROR MESSAGES ------------------------------------------------------------------
 error Lottery__LotteryCannotBeEnteredAtThisPointOfTime(uint timestamp);
 error Lottery__DidNotPayExactEntryPrice(address sender, uint valueSend);
@@ -40,10 +35,8 @@ error Lottery__LotteryHasNotEndedYet(address caller);
 /// @author Stefan Lehmann/Stefan1612/SimpleBlock
 /// @notice Contract utilizing Chainlink's VRF to generate a truly random result for a lottery
 /// @dev testing in local environment would be either done via: 1. changing this contract to create random numbers without VRF for testing purposes. 2. using the provided Mock. 3. Forking Mainnet.
-contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
+contract LotteryV2 is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
    
-   
-
     /*
     @Dev constructor arguments:
     goerli VRF V2
@@ -52,8 +45,6 @@ contract Lottery is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
     Key hash: 0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15
     Max gas price: 150 Gwei
     VRF Coordinator: 	0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D
-
-
     */
 
     // Type declarations, State Variables --------------------------------------------------------------------------

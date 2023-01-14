@@ -56,7 +56,7 @@ const Management = (props) => {
                   className="timeIntervalCSS"
                   onClick={props.changingTimeInterval}
                 >
-                  Submit new Time interval
+                  Submit new Time interval <br></br>(In seconds)
                 </Button>
                 <TextField
                   variant={"filled"}

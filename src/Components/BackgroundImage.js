@@ -46,7 +46,7 @@ const BackgroundImage = () => {
           Ethereum Lottery
         </Typography>
         <Typography marginTop={2} component="h2" variant="h2">
-          Running on Kovan!
+          Running on Goerli!
         </Typography>
       </Box>
     </Box>

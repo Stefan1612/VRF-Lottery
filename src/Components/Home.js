@@ -1,6 +1,34 @@
 import { ethers } from "ethers";
 import { Typography, Box, Button } from "@mui/material";
 const Home = (props) => {
+  let unix_timestamp = props.startTime;
+  // Create a new JavaScript Date object based on the timestamp
+  // multiplied by 1000 so that the argument is in milliseconds, not seconds.
+  var date = new Date(unix_timestamp * 1000);
+  // Hours part from the timestamp
+  var hours = date.getHours();
+  // Minutes part from the timestamp
+  var minutes = "0" + date.getMinutes();
+  // Seconds part from the timestamp
+  var seconds = "0" + date.getSeconds();
+
+  var day = date.getDate();
+  var month = date.getMonth() + 1;
+  var year = date.getFullYear();
+
+  // Will display time in 10:30:23 format
+  var formattedTime =
+    hours +
+    ":" +
+    minutes.substr(-2) +
+    ":" +
+    seconds.substr(-2) +
+    "," +
+    day +
+    "," +
+    month +
+    "," +
+    year;
   return (
     <Box id="HomeId">
       {/* <img id="image" src="https://c.pxhere.com/photos/c3/a0/casino_roulette_table_the_dealer_game_fun_addiction_pleasure-993952.jpg!d"></img> */}
@@ -12,7 +40,7 @@ const Home = (props) => {
           </Typography>
 
           <Typography variant={"p"} component={"span"}>
-            Last Lottery started at: {props.startTime}
+            Last Lottery started at: {formattedTime}
           </Typography>
           <Typography>
             Minimun amount of time the Lottery is going to run:{" "}
