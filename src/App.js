@@ -205,6 +205,7 @@ function App() {
     getWinnerAddress(); // infuraProvider
     setEventTime(); // infuraProvider
     setStartTimeEvent(); // infuraProvider
+    getLotteryState();
     /* getCurrentUnixTime() */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -387,8 +388,6 @@ function App() {
       value: ethers.utils.parseEther(price.toString()),
     });
     await data.wait();
-    /* getContractParticipantsArray();
-    getCurrentPool(); */
   }
 
   // used to choose the winner of the current lottery
@@ -488,9 +487,9 @@ function App() {
   const [startTime, setStartTime] = useState();
 
   // currentUnix time
-  const [currentUnix, setCurrentUnix] = useState(
+  /* const [currentUnix, setCurrentUnix] = useState(
     Math.round(new Date().getTime() / 1000)
-  );
+  ); */
 
   // checking if lottery time interval has run out
   /* function getCurrentUnixTime() {
@@ -520,8 +519,22 @@ function App() {
   /**
    * timer countdown for lottery countdown
    */
-
-  async function getLotteryState() {}
+  let lotteryStates = {
+    0: "looking For Pariticipants",
+    1: "ended No Winner Chosen",
+    2: "currently Choosing Winner",
+    3: "Winner Chosen Waiting To Be Started",
+  };
+  const [currentState, setCurrentState] = useState(lotteryStates[0]);
+  async function getLotteryState() {
+    const contract = new ethers.Contract(
+      lotteryAddress[5].LotteryV2,
+      lotteryABI.abi,
+      infuraProvider
+    );
+    let currentState = await contract.currentState();
+    setCurrentState(lotteryStates[currentState]);
+  }
 
   function startTimer(duration, display) {
     var timer = duration,
@@ -582,6 +595,7 @@ function App() {
                       getContractParticipantsArray={
                         getContractParticipantsArray
                       }
+                      currentState={currentState}
                       playerArray={playerArray}
                     />
                   }

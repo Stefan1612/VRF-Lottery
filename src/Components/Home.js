@@ -36,7 +36,8 @@ const Home = (props) => {
       <Box>
         <Box paddingTop={10}>
           <Typography variant="h1" component="h3">
-            {props.isLotteryRunning}
+            {/* {props.isLotteryRunning} */}
+            {props.currentState}
           </Typography>
 
           <Typography variant={"p"} component={"span"}>
