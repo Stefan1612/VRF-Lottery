@@ -62,11 +62,13 @@ function App() {
       console.log("newLotteryStarted at " + Unixtime);
       setLotteryBool(true);
       /* startLotteryCountdown(time); */
-      setEventTime();
+      /* setEventTime(); */
+      setEndTime(Unixtime + time);
       setStartTimeEvent();
       setCurrentPool(0);
       setWinner("0x0000000000000000000000000000000000000000");
       setPlayerArray([]);
+      setCurrentState(lotteryStates[0]);
     });
     // listens for the random result being successfully generated and the winner of the lottery to be selected
     eventContract.on(
@@ -75,6 +77,7 @@ function App() {
         console.log("lottery ended and the winner is " + winnerAddressEvent);
         getWinnerAddress();
         setLotteryBool(false);
+        setCurrentState(lotteryStates[3]);
       }
     );
     // event to listen for new participants entering the lottery
@@ -101,11 +104,13 @@ function App() {
         console.log("newLotteryStarted at " + Unixtime);
         setLotteryBool(true);
         /* startLotteryCountdown(time); */
-        setEventTime();
+        /* setEventTime(); */
+        setEndTime(Unixtime + time);
         setStartTimeEvent();
         setCurrentPool(0);
         setWinner("0x0000000000000000000000000000000000000000");
         setPlayerArray([]);
+        setCurrentState(lotteryStates[0]);
       });
       eventContract.removeListener(
         "winnerHasBeenChosen",
@@ -113,6 +118,7 @@ function App() {
           console.log("lottery ended and the winner is " + winnerAddressEvent);
           getWinnerAddress();
           setLotteryBool(false);
+          setCurrentState(lotteryStates[3]);
         }
       );
       eventContract.removeListener("newParticipant", (newEntry, time) => {
@@ -491,30 +497,7 @@ function App() {
     Math.round(new Date().getTime() / 1000)
   ); */
 
-  // checking if lottery time interval has run out
-  /* function getCurrentUnixTime() {
-    setCurrentUnix(Math.round(new Date().getTime() / 1000));
-    if (
-      (currentUnix >= endTime && lengthPlayerArray >= 2) ||
-      lotteryBool === false
-    ) {
-      setIsLotteryRunning("Currently no lottery running!");
-    } else {
-      setIsLotteryRunning("Lottery ongoing!");
-    }
-  } */
-
   // using the block.timestamp to create a timer, using this method you need to follow the 15 second rule. The timer is not going to be accurate at all for periods under this time period.
-
-  // timer that ticks every seconds
-  /* useEffect(() => {
-    let myInterval = setInterval(() => {
-      getCurrentUnixTime();
-    }, 1000);
-    return () => {
-      clearInterval(myInterval);
-    };
-  }); */
 
   /**
    * timer countdown for lottery countdown
@@ -525,7 +508,7 @@ function App() {
     2: "currently Choosing Winner",
     3: "Winner Chosen Waiting To Be Started",
   };
-  const [currentState, setCurrentState] = useState(lotteryStates[0]);
+  const [currentState, setCurrentState] = useState("a");
   async function getLotteryState() {
     const contract = new ethers.Contract(
       lotteryAddress[5].LotteryV2,
@@ -536,25 +519,49 @@ function App() {
     setCurrentState(lotteryStates[currentState]);
   }
 
-  function startTimer(duration, display) {
-    var timer = duration,
-      minutes,
-      seconds;
-    setInterval(function () {
-      minutes = parseInt(timer / 60, 10);
-      seconds = parseInt(timer % 60, 10);
+  const [minutes, setMinutes] = useState(0);
+  const [seconds, setSeconds] = useState(0);
 
-      minutes = minutes < 10 ? "0" + minutes : minutes;
-      seconds = seconds < 10 ? "0" + seconds : seconds;
+  const [countDown, setCountDown] = useState(0);
 
-      display.textContent = minutes + ":" + seconds;
+  useEffect(() => {
+    if (currentState === lotteryStates[0]) {
+      console.log(
+        "detected lottery running on load with remaining time in seconds:"
+      );
+      console.log(endTime - Math.round(new Date().getTime() / 1000));
+      setEndTime();
+      if (endTime - Math.round(new Date().getTime() / 1000) > 0) {
+        setMinutes(
+          Math.floor((endTime - Math.round(new Date().getTime() / 1000)) / 60)
+        );
+        setSeconds(
+          Math.floor((endTime - Math.round(new Date().getTime() / 1000)) % 60)
+        );
+      }
 
-      if (--timer < 0) {
-        timer = duration;
+      /*  startTimer(time); */
+    } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endTime, currentState]);
+
+  useEffect(() => {
+    let myInterval = setInterval(() => {
+      if (seconds > 0) {
+        setSeconds(seconds - 1);
+      }
+      if (seconds === 0) {
+        if (minutes === 0) {
+          clearInterval(myInterval);
+        } else {
+          setMinutes(minutes - 1);
+          setSeconds(59);
+        }
       }
     }, 1000);
-  }
-
+    return () => {
+      clearInterval(myInterval);
+    };
+  });
   return (
     <ThemeProvider theme={theme}>
       <Header FirstLoad={getAccount} />
@@ -597,6 +604,9 @@ function App() {
                       }
                       currentState={currentState}
                       playerArray={playerArray}
+                      countDown={countDown}
+                      minutes={minutes}
+                      seconds={seconds}
                     />
                   }
                 />

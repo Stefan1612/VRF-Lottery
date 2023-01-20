@@ -310,22 +310,22 @@ contract LotteryV2 is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
     function chooseWinner() external  {
         // replacement for "onlyAfter(startTime + time) modifier
         currentState = lotteryState.currentlyChoosingWinner;
-        /* if(startTime + time < block.timestamp){
+        if(startTime + time > block.timestamp){
             revert Lottery__LotteryHasNotEndedYet(msg.sender);
-        } */
+        }
         
         /* require(
             participants.length >= 2,
             "There are not enough participants yet"
         ); */
-        /* if(participants.length < 2){
+        if(participants.length < 2){
             revert Lottery__LotteryHasNotEndedYet(msg.sender);
-        } */
+        }
 
         /* require(winnerChosen == false, "The time has not run out yet"); */
-        /* if(winnerChosen == true){
+        if(winnerChosen == true){
             revert Lottery__WinnerAlreadyChosen(winnerChosen);
-        } */
+        }
      
         //Cut this:
         requestRandomWords();
@@ -396,7 +396,7 @@ contract LotteryV2 is  ReentrancyGuard, VRFConsumerBaseV2, ConfirmedOwner  {
         endTime = block.timestamp + time;
         winnerChosen = false;
         winner = payable(address(0));
-        currentState = lotteryState.WinnerChosenWaitingToBeStarted;
+        currentState = lotteryState.lookingForPariticipants;
         emit newLotteryStarted(block.timestamp);
     }
 

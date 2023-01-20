@@ -137,9 +137,13 @@ const Management = (props) => {
                 </Button>
                 <Typography component="span" variant="span">
                   &nbsp;
-                  {props.balance
-                    ? props.balance
-                    : "There is no balance inside the contract"}
+                  {props.balance ? (
+                    `: ${props.balance}`
+                  ) : (
+                    <Typography>
+                      "There is no balance inside the contract"
+                    </Typography>
+                  )}
                 </Typography>
                 <Button
                   variant={"outlined"}

@@ -53,6 +53,14 @@ const Home = (props) => {
               {props.time} seconds
             </Typography>
           </Typography>
+          {/*  <Typography>Remaining Seconds: {props.countDown}</Typography> */}
+          <Typography>
+            <h1>
+              {" "}
+              {props.minutes}:
+              {props.seconds < 10 ? `0${props.seconds}` : props.seconds}
+            </h1>
+          </Typography>
         </Box>
 
         <Box
