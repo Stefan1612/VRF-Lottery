@@ -36,7 +36,6 @@ const Home = (props) => {
       <Box>
         <Box paddingTop={10}>
           <Typography variant="h1" component="h3">
-            {/* {props.isLotteryRunning} */}
             {props.currentState}
           </Typography>
 
@@ -53,7 +52,7 @@ const Home = (props) => {
               {props.time} seconds
             </Typography>
           </Typography>
-          {/*  <Typography>Remaining Seconds: {props.countDown}</Typography> */}
+
           <Typography>
             <h1>
               {" "}
