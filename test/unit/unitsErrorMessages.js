@@ -17,7 +17,7 @@ describe("Lottery basics", () => {
 
   it("should show TotalCurrentPool", async () => {
     // currentPool of ether inside the contract should be 0
-    expect(await lt.totalCurrentPool()).to.equal("0");
+    expect(await lt.s_totalCurrentPool()).to.equal("0");
   });
   it("should show current Time interval", async () => {
     // the initial time interval the lottery is running for should equal 10 seconds
@@ -86,7 +86,7 @@ describe("Lottery unit advanced", () => {
       lt.enterPool({
         value: utils.parseUnits("0.002", "ether"),
       })
-    ).to.be.revertedWith("You cannot enter this pool anymore");
+    ).to.be.revertedWith("Lottery__LotteryCannotBeEnteredAtThisPointOfTime");
   });
   it("should not enter the pool due to using incorrect msg.value", async () => {
     // sending the wrong msg.value - 1. underpay - 2. overpay
@@ -95,13 +95,13 @@ describe("Lottery unit advanced", () => {
       lt.enterPool({
         value: utils.parseUnits("0.001", "ether"),
       })
-    ).to.be.revertedWith("You need to pay the exact price");
+    ).to.be.revertedWith("Lottery__DidNotPayExactEntryPrice");
     // 2.
     await expect(
       lt.enterPool({
         value: utils.parseUnits("0.003", "ether"),
       })
-    ).to.be.revertedWith("You need to pay the exact price");
+    ).to.be.revertedWith("Lottery__DidNotPayExactEntryPrice");
   });
   it("should enter the pool 1 time and enter the pool a second time after the time interval (10 seconds) and still work", async () => {
     // entering the pool within the inital time interval once
@@ -120,14 +120,12 @@ describe("Lottery unit advanced", () => {
   it("should not change the lottery entry price from 0.002 to 0.003 because a lottery is running", async () => {
     await expect(
       lt.entryPriceInWei(utils.parseUnits("0.002", "ether"))
-    ).to.be.revertedWith(
-      "You can only change the entry price after the winner has been chosen!"
-    );
+    ).to.be.revertedWith("Lottery__LotteryHasNoWinnerYet");
     expect(utils.formatEther(await lt.price())).to.equal("0.002");
   });
   it("should not change the lottery time interval from 10 to 20 seconds because a lottery is running", async () => {
     await expect(lt.settingTimeInSeconds(20)).to.be.revertedWith(
-      "You can only change the time after the winner has been chosen!"
+      "Lottery__LotteryHasNoWinnerYet"
     );
     expect(await lt.time()).to.equal("10");
   });
@@ -138,8 +136,8 @@ describe("Lottery unit advanced", () => {
     await lt.enterPool({
       value: utils.parseUnits("0.002", "ether"),
     });
-    await expect(await lt.chooseWinner()).to.be.revertedWith(
-      "The lottery has not ended yet"
+    await expect(lt.chooseWinner()).to.be.revertedWith(
+      "Lottery__LotteryHasNotEndedYet"
     );
     await lt.connect(addr1).enterPool({
       value: utils.parseUnits("0.002", "ether"),
@@ -155,7 +153,7 @@ describe("Lottery unit advanced", () => {
     expect(await lt.participants(2)).to.equal(addr2.address);
 
     await expect(lt.chooseWinner()).to.be.revertedWith(
-      "The lottery has not ended yet"
+      "Lottery__LotteryHasNotEndedYet"
     );
   });
 });

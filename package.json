@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@chainlink/contracts": "^0.3.1",
+    "@chainlink/contracts": "^0.6.0",
     "@emotion/react": "^11.8.1",
     "@emotion/styled": "^11.8.1",
     "@mui/icons-material": "^5.5.0",
@@ -35,7 +35,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "unit-local-error": "npx hardhat test test/unit/unitsErrorMessages.js --network hardhat",
+    "unit-local-require": "npx hardhat test test/unit/unitsRequireStatements.js --network hardhat",
+    "integration-goerli-error": "npx hardhat test test/integration/VRFConsumerErrorMessages.js --network goerli",
+    "integration-goerli-require": "npx hardhat test test/integration/VRFConsumerRequireStatements.js --network goerli"
   },
   "eslintConfig": {
     "extends": [

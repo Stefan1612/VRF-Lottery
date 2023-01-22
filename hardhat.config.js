@@ -11,6 +11,7 @@ const {
   APP_PRIVATE_KEY,
   COINMARKETCAP_API_KEY,
   APP_KOVAN_ENDPOINT,
+  APP_GOERLI_ENDPOINT,
 } = process.env;
 // eslint-disable-next-line
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -20,7 +21,7 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 module.exports = {
   solidity: "0.8.7",
-  defaultNetwork: "kovan",
+  defaultNetwork: "goerli",
   networks: {
     hardhat: {
       chainId: 1337, // default is 31337: https://hardhat.org/metamask-issue.html
@@ -32,6 +33,11 @@ module.exports = {
     kovan: {
       chainId: 42,
       url: APP_KOVAN_ENDPOINT,
+      accounts: [APP_PRIVATE_KEY],
+    },
+    goerli: {
+      chainId: 5,
+      url: APP_GOERLI_ENDPOINT,
       accounts: [APP_PRIVATE_KEY],
     },
   },

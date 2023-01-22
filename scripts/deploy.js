@@ -12,20 +12,24 @@ async function deploy(contractName, args = []) {
 
   const CF = await ethers.getContractFactory(contractName);
   const contract = await CF.deploy(
-    "0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9",
-    "0xa36085F69e2889c224210F603D836748e7dC0088",
-    "0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4",
-    "1000000000000000000"
+    //subscription ID of personal vrf subscriber on goerli
+    "8344",
+    // VRF Coordinator on goerli
+    "0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D",
+    // keyhash on goerli
+    "0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15"
   );
 
   await contract.deployed();
   await storeContractAddress(contract, contractName);
   await verifyContract(
     contract,
-    "0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9",
-    "0xa36085F69e2889c224210F603D836748e7dC0088",
-    "0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4",
-    "1000000000000000000"
+    //subscription ID of personal vrf subscriber on goerli
+    "8344",
+    // VRF Coordinator on goerli
+    "0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D",
+    // keyhash on goerli
+    "0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15"
   );
 
   console.log("Deployer:", (await ethers.getSigners())[0].address);
@@ -35,13 +39,7 @@ async function deploy(contractName, args = []) {
 }
 
 async function main() {
-  await deploy(
-    "Lottery"
-    /* "0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9",
-    "0xa36085F69e2889c224210F603D836748e7dC0088",
-    "0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4",
-    "1000000000000000000" */
-  );
+  await deploy("LotteryV2");
 }
 
 main().catch((error) => {

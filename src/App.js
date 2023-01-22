@@ -8,7 +8,7 @@ import Account from "./Components/Account";
 import Management from "./Components/Management";
 import FAQ from "./Components/FAQ";
 import { ethers } from "ethers";
-import lotteryABI from "./config/contracts/Lottery.json";
+import lotteryABI from "./config/contracts/LotteryV2.json";
 import lotteryAddress from "./config/contracts/map.json";
 import { Container, Box, ThemeProvider } from "@mui/material";
 import BackgroundImage from "./Components/BackgroundImage";
@@ -20,12 +20,10 @@ import theme from "./Components/theme/theme";
 const { utils } = require("ethers");
 
 function App() {
-  //running on kovan
+  //running on goerli
 
   const [account, setAccount] = useState("");
-
   const [currentPool, setCurrentPool] = useState("");
-
   const [time, setTime] = useState("");
   const [owner, setOwner] = useState("");
   const [price, setPrice] = useState("");
@@ -35,7 +33,6 @@ function App() {
     "Submit an address to show balance in"
   );
   const [lotteryProfits, setLotteryProfits] = useState("");
-  const [isLotteryRunning, setIsLotteryRunning] = useState("Yes");
 
   /*  const provider = new ethers.providers.Web3Provider(window.ethereum); */
 
@@ -45,28 +42,34 @@ function App() {
     provider = new ethers.providers.Web3Provider(window.ethereum);
   }
 
-  const infuraProvider = new ethers.providers.InfuraProvider("kovan", {
+  const infuraProvider = new ethers.providers.InfuraProvider("goerli", {
     projectId: process.env.REACT_APP_PROJECT_ID,
     projectSecret: process.env.REACT_APP_PROJECT_SECRET,
   });
 
   const eventContract = new ethers.Contract(
-    lotteryAddress[42].Lottery,
+    lotteryAddress[5].LotteryV2,
     lotteryABI.abi,
     infuraProvider
   );
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // -----------------------------------
+  // Handle contract event listener
+  // -----------------------------------
 
   useEffect(() => {
     // listens for a new lottery to start
     eventContract.on("newLotteryStarted", (Unixtime) => {
       console.log("newLotteryStarted at " + Unixtime);
-      setLotteryBool(true);
-      /* startLotteryCountdown(time); */
       setEventTime();
       setStartTimeEvent();
       setCurrentPool(0);
       setWinner("0x0000000000000000000000000000000000000000");
       setPlayerArray([]);
+      setCurrentState(lotteryStates[0]);
+      setStartedCountdown(false);
     });
     // listens for the random result being successfully generated and the winner of the lottery to be selected
     eventContract.on(
@@ -74,13 +77,12 @@ function App() {
       (winnerAddressEvent, totalCurrentPoolEvent, timeEvent) => {
         console.log("lottery ended and the winner is " + winnerAddressEvent);
         getWinnerAddress();
-        setLotteryBool(false);
+        setCurrentState(lotteryStates[3]);
       }
     );
     // event to listen for new participants entering the lottery
     eventContract.on("newParticipant", (newEntry, time) => {
       console.log("new entry, new participant= " + newEntry);
-      // setEventCurrentPool();
       getContractParticipantsArray();
       getCurrentPool();
     });
@@ -99,25 +101,24 @@ function App() {
     return () => {
       eventContract.removeListener("newLotteryStarted", (Unixtime) => {
         console.log("newLotteryStarted at " + Unixtime);
-        setLotteryBool(true);
-        /* startLotteryCountdown(time); */
         setEventTime();
         setStartTimeEvent();
         setCurrentPool(0);
         setWinner("0x0000000000000000000000000000000000000000");
         setPlayerArray([]);
+        setCurrentState(lotteryStates[0]);
+        setStartedCountdown(false);
       });
       eventContract.removeListener(
         "winnerHasBeenChosen",
         (winnerAddressEvent, totalCurrentPoolEvent, timeEvent) => {
           console.log("lottery ended and the winner is " + winnerAddressEvent);
           getWinnerAddress();
-          setLotteryBool(false);
+          setCurrentState(lotteryStates[3]);
         }
       );
       eventContract.removeListener("newParticipant", (newEntry, time) => {
         console.log("new entry, new participant= " + newEntry);
-        // setEventCurrentPool();
         getContractParticipantsArray();
         getCurrentPool();
       });
@@ -131,9 +132,16 @@ function App() {
       });
     }; // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // -----------------------------------
+  // Handle contract data fetching
+  // -----------------------------------
+
   async function setEventTime() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
@@ -143,7 +151,7 @@ function App() {
   }
   async function setStartTimeEvent() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
@@ -151,23 +159,17 @@ function App() {
     data = data.toNumber();
     setStartTime(data);
   }
-  /* function setEventCurrentPool() {
-    console.log(price);
-    setCurrentPool((poolbefore) => poolbefore + price);
-  } */
 
   const [playerArray, setPlayerArray] = useState([]);
-  const [lengthPlayerArray, setLengthPlayerArray] = useState();
 
   async function getContractParticipantsArray() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
     let array = await contract.getArrayLength();
     array = array.toNumber();
-    setLengthPlayerArray(array);
 
     let memoryArray = [];
     if (array === 0) {
@@ -196,7 +198,6 @@ function App() {
 
   useEffect(() => {
     getAccount(); // user provider
-
     getContractParticipantsArray(); // infuraProvider
     getCurrentPool(); // infuraProvider
     getTime(); // infuraProvider
@@ -205,8 +206,16 @@ function App() {
     getWinnerAddress(); // infuraProvider
     setEventTime(); // infuraProvider
     setStartTimeEvent(); // infuraProvider
-    getCurrentUnixTime(); // eslint-disable-next-line react-hooks/exhaustive-deps
+    getLotteryState(); // infuraProvider
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // -----------------------------------
+  // Handle web3 metamask login
+  // -----------------------------------
 
   async function getAccount() {
     if (typeof window.ethereum !== "undefined") {
@@ -221,6 +230,12 @@ function App() {
       );
     }
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // -----------------------------------
+  // Handle metamask event listener
+  // -----------------------------------
 
   useEffect(() => {
     if (typeof window.ethereum !== "undefined") {
@@ -258,6 +273,11 @@ function App() {
       // Do any other work!
     }
   }
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // -----------------------------------
+  // Handle network
+  // -----------------------------------
 
   // network e.g. 42 Kovan
   const [network, setNetwork] = useState({
@@ -279,17 +299,18 @@ function App() {
   // fetching and saving the CurrentPool Size
   async function getCurrentPool() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
-    let data = await contract.totalCurrentPool();
+    let data = await contract.s_totalCurrentPool();
+
     setCurrentPool(bigNumIntoEther4Decimals(data));
   }
   // fetching and saving the current Time interval the lottery is atleast running for
   async function getTime() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
@@ -302,7 +323,7 @@ function App() {
   async function changingTimeInterval() {
     const signer = provider.getSigner();
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       signer
     );
@@ -318,7 +339,7 @@ function App() {
   // fetching and saving of the contract owner
   async function getOwner() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
@@ -329,13 +350,19 @@ function App() {
   // fetching and saving of the current entry price
   async function getPrice() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
     let data = await contract.price();
     setPrice(bigNumIntoEther4Decimals(data));
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // -----------------------------------
+  // Handle interacting and changing contract state
+  // -----------------------------------
 
   // used for changing entry price input field
   const [previewPriceTwo, setPreviewPriceTwo] = useState();
@@ -355,7 +382,7 @@ function App() {
   async function changeEntryPrice() {
     const signer = provider.getSigner();
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       signer
     );
@@ -365,7 +392,7 @@ function App() {
   // fetching and saving of the the last winner of the lottery
   async function getWinnerAddress() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
@@ -377,7 +404,7 @@ function App() {
   async function enterPoolContract() {
     const signer = provider.getSigner();
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       signer
     );
@@ -386,29 +413,24 @@ function App() {
       value: ethers.utils.parseEther(price.toString()),
     });
     await data.wait();
-    /* getContractParticipantsArray();
-    getCurrentPool(); */
   }
 
   // used to choose the winner of the current lottery
   async function chooseWinnerContract() {
     const signer = provider.getSigner();
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       signer
     );
     await contract.chooseWinner();
   }
 
-  // switched on and offed during/after lottery
-  const [lotteryBool, setLotteryBool] = useState(true);
-
   // used to start a new lottery
   async function startNewLotteryContract() {
     const signer = provider.getSigner();
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       signer
     );
@@ -426,7 +448,7 @@ function App() {
   async function withdrawPriceContract() {
     const signer = provider.getSigner();
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       signer
     );
@@ -436,7 +458,7 @@ function App() {
   // used to get the current Balance (profits of contract itself, all funds of players and past wins that haven't been withdrawn yet) sitting inside the contract
   async function getContractBalance() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
@@ -446,7 +468,7 @@ function App() {
   // fetching and saving the current lottery profits sitting inside the contract (profits of the lottery itself, withdrawable by owner/government)
   async function getContractProfits() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       infuraProvider
     );
@@ -457,7 +479,7 @@ function App() {
   async function withdrawContractProfits() {
     const signer = provider.getSigner();
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       signer
     );
@@ -473,7 +495,7 @@ function App() {
   // fetching and saving of personal funds available inside the contract
   async function getPersonalWinnings() {
     const contract = new ethers.Contract(
-      lotteryAddress[42].Lottery,
+      lotteryAddress[5].LotteryV2,
       lotteryABI.abi,
       provider
     );
@@ -486,30 +508,76 @@ function App() {
   // unix time when lottery started
   const [startTime, setStartTime] = useState();
 
-  // currentUnix time
-  const [currentUnix, setCurrentUnix] = useState(
-    Math.round(new Date().getTime() / 1000)
-  );
-
-  // checking if lottery time interval has run out
-  function getCurrentUnixTime() {
-    setCurrentUnix(Math.round(new Date().getTime() / 1000));
-    if (
-      (currentUnix >= endTime && lengthPlayerArray >= 2) ||
-      lotteryBool === false
-    ) {
-      setIsLotteryRunning("Currently no lottery running!");
-    } else {
-      setIsLotteryRunning("Lottery ongoing!");
-    }
-  }
-
   // using the block.timestamp to create a timer, using this method you need to follow the 15 second rule. The timer is not going to be accurate at all for periods under this time period.
 
-  // timer that ticks every seconds
+  /**
+   * timer countdown for lottery countdown
+   */
+  let lotteryStates = {
+    0: "looking For Pariticipants",
+    1: "ended No Winner Chosen",
+    2: "currently Choosing Winner",
+    3: "Winner Chosen Waiting To Be Started",
+  };
+  const [currentState, setCurrentState] = useState("Fetching current State");
+  async function getLotteryState() {
+    const contract = new ethers.Contract(
+      lotteryAddress[5].LotteryV2,
+      lotteryABI.abi,
+      infuraProvider
+    );
+    let currentState = await contract.currentState();
+    setCurrentState(lotteryStates[currentState]);
+  }
+
+  const [minutes, setMinutes] = useState(0);
+  const [seconds, setSeconds] = useState(0);
+
+  /**
+   * checks if a lottery is currently running
+   * if YES => set Minutes and seconds for the countdown to start.
+   *
+   */
+  const [startedCountdown, setStartedCountdown] = useState(false);
+  useEffect(() => {
+    if (currentState === lotteryStates[0] && endTime && !startedCountdown) {
+      console.log(
+        "detected lottery running on load with remaining time in seconds:"
+      );
+      console.log(endTime - Math.round(new Date().getTime() / 1000));
+      console.log(endTime);
+      setStartedCountdown(true);
+      /* setEndTime(); */
+      if (endTime - Math.round(new Date().getTime() / 1000) > 0) {
+        setMinutes(
+          Math.floor((endTime - Math.round(new Date().getTime() / 1000)) / 60)
+        );
+        setSeconds(
+          Math.floor((endTime - Math.round(new Date().getTime() / 1000)) % 60)
+        );
+      }
+
+      /*  startTimer(time); */
+    } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endTime, currentState]);
+
+  /**
+   * countdown for lottery, showing timer in minutes: seconds
+   */
+
   useEffect(() => {
     let myInterval = setInterval(() => {
-      getCurrentUnixTime();
+      if (seconds > 0) {
+        setSeconds(seconds - 1);
+      }
+      if (seconds === 0) {
+        if (minutes === 0) {
+          clearInterval(myInterval);
+        } else {
+          setMinutes(minutes - 1);
+          setSeconds(59);
+        }
+      }
     }, 1000);
     return () => {
       clearInterval(myInterval);
@@ -542,7 +610,6 @@ function App() {
                   path="/"
                   element={
                     <Home
-                      isLotteryRunning={isLotteryRunning}
                       startTime={startTime}
                       getCurrentPool={getCurrentPool}
                       currentPool={currentPool}
@@ -556,7 +623,10 @@ function App() {
                       getContractParticipantsArray={
                         getContractParticipantsArray
                       }
+                      currentState={currentState}
                       playerArray={playerArray}
+                      minutes={minutes}
+                      seconds={seconds}
                     />
                   }
                 />
@@ -577,7 +647,7 @@ function App() {
 
             <Box id="Management">
               <Management
-                lotteryAddress={lotteryAddress[42].Lottery}
+                lotteryAddress={lotteryAddress[5].LotteryV2}
                 changingTimeInterval={changingTimeInterval}
                 handleChange={handleChange}
                 getOwner={getOwner}
